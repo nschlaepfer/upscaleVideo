@@ -1,0 +1,14 @@
+video_upscaling/
+│
+├── data/
+│   ├── input.mp4
+│   └── output.mp4
+│
+├── models/
+│   ├── my_model.pth
+│   └── my_model.mlmodel
+│
+└── src/
+    ├── video_processing.py
+    ├── model_training.py
+    └── main.py
