@@ -1,28 +1,32 @@
 import cv2
+import numpy as np
 
-def process_video(input_path, output_path, model):
-    # Open the video file
-    cap = cv2.VideoCapture(input_path)
+def process_frame(frame, model):
+    tensor = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+    tensor = torch.from_numpy(np.transpose(tensor, (2, 0, 1))).unsqueeze(0)
 
-    # Get the video's width, height, and frames per second
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    fps = cap.get(cv2.CAP_PROP_FPS)
+    with torch.no_grad():
+        tensor = model(tensor).squeeze().clamp(0, 1)
 
-    # Create a VideoWriter to output the processed video
-    out = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (width, height))
+    frame = cv2.cvtColor(np.transpose(tensor.numpy(), (1, 2, 0)), cv2.COLOR_RGB2BGR)
+    return np.array(frame * 255, dtype=np.uint8)
 
-    while cap.isOpened():
-        ret, frame = cap.read()
+def process_video(input_path, output_path, model, resolution, codec):
+    video = cv2.VideoCapture(input_path)
+    width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps = video.get(cv2.CAP_PROP_FPS)
+
+    fourcc = cv2.VideoWriter_fourcc(*codec)
+    output = cv2.VideoWriter(output_path, fourcc, fps, (width * resolution, height * resolution))
+
+    while True:
+        ret, frame = video.read()
         if not ret:
             break
 
-        # Process the frame (this is where you would use your machine learning model)
-        # For now, we'll just copy the input frame to the output
-        output = frame
+        frame = process_frame(frame, model)
+        output.write(frame)
 
-        # Write the output frame to the new video file
-        out.write(output)
-
-    cap.release()
-    out.release()
+    video.release()
+    output.release()
